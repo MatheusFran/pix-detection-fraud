@@ -1,81 +1,47 @@
 from abc import ABC, abstractmethod
 import pandas as pd
 
-
-class NewFeatures(ABC):
+class FeatureStrategy(ABC):
     @abstractmethod
-    def apply(self):
-        return self
+    def apply(self, X):
+        pass
 
-
-class DateFeature(NewFeatures):
+class DateFeatureStrategy(FeatureStrategy):
     def apply(self, X):
         date = pd.to_datetime(X['timestamp'])
-        date.day = date.day
-        date.month = date.month
-        date.year = date.year
-
-        X['day_date'] = date.day
-        X['month_date'] = date.month
-        X['year_date'] = date.year
-
+        X['day_date'] = date.dt.day
+        X['month_date'] = date.dt.month
+        X['year_date'] = date.dt.year
         return X
 
-
-class TimeFeature(NewFeatures):
+class TimeFeatureStrategy(FeatureStrategy):
     def apply(self, X):
         time = pd.to_datetime(X['timestamp'])
-
-        time.hour = time.hour
-        time.minute = time.minute
-
-        X['hour_date'] = time.hour
-        X['minute_date'] = time.minute
-
+        X['hour_date'] = time.dt.hour
+        X['minute_date'] = time.dt.minute
         return X
 
-
-class AgeCategoryFeature(NewFeatures):
+class AgeCategoryFeatureStrategy(FeatureStrategy):
     def apply(self, X):
         age = pd.to_numeric(X['age'])
-
-        if age <= 30:
-            X['age_category'] = 'jovem'
-        elif 30 < age < 50:
-            X['age_category'] = 'adulto'
-        else:
-            X['age_category'] = 'idoso'
-
+        X['age_category'] = pd.cut(
+            age, bins=[0, 30, 50, 200], labels=['jovem', 'adulto', 'idoso']
+        )
         return X
 
-
-class HourCategoryFeature(NewFeatures):
+class HourCategoryFeatureStrategy(FeatureStrategy):
     def apply(self, X):
-        time = pd.to_numeric(X['timestamp'])
-        hour = time.hour
-
-        if 5 < hour < 12:
-            X['hour_category'] = 'manha'
-        elif 12 < hour < 18:
-            X['hour_category'] = 'tarde'
-        elif 18 < hour < 22:
-            X['hour_category'] = 'noite'
-        elif 22 < hour < 4:
-            X['hour_category'] = 'madrugada'
+        hour = pd.to_datetime(X['timestamp']).dt.hour
+        X['hour_category'] = pd.cut(hour, bins=[-1, 4, 11, 17, 21, 23],
+                                    labels=['madrugada', 'manha', 'tarde', 'noite', 'madrugada'],
+                                    include_lowest=True,
+                                    ordered=False)
 
         return X
-
 
 class NewFeature:
-    @staticmethod
-    def create_feature(type):
-        if type == 'data':
-            return DateFeature()
-        elif type == 'time':
-            return TimeFeature()
-        elif type == 'age':
-            return AgeCategoryFeature()
-        elif type == 'hour':
-            return HourCategoryFeature()
-        else:
-            return None
+    def __init__(self, strategy: FeatureStrategy):
+        self.strategy = strategy
+
+    def apply(self, X):
+        return self.strategy.apply(X)
