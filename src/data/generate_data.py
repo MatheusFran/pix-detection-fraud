@@ -1,11 +1,11 @@
+'''
+    Gera dados sintéticos de clientes e transações Pix
+    #Comece a aplicação rodando esse código apenas 1 vez
+'''
 from faker import Faker
-from dotenv import load_dotenv
-import os
 import logging as log
 import pandas as pd
 import numpy as np
-
-
 
 fake = Faker('pt_BR')
 np.random.seed(42)
