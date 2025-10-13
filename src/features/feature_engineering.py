@@ -38,8 +38,7 @@ class FeatureEngineer(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None):
         for strat in self.strategies:
             if hasattr(strat, 'encoder') or hasattr(strat, 'scaler'):
-                # Algumas estratégias possuem fit embutido
-                strat.apply_transform(X)  # aqui fit será chamado
+                strat.apply_transform(X)
         return self
 
     def transform(self, X):
