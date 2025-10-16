@@ -1,4 +1,5 @@
 from prefect import flow
+import mlflow
 
 from pipelines.tasks.evaluate import evaluator
 from pipelines.tasks.load_data import load_data
@@ -10,7 +11,8 @@ from src.features.new_features import TimeFeatureStrategy, AgeCategoryFeatureStr
 
 @flow
 def train_pipeline(cat_cols, num_cols, columns_drop):
-    model = None
+    mlflow.set_tracking_uri("http://localhost:5000")
+    mlflow.set_experiment("pix-detection-fraud-training")
 
     features = [
         TimeFeatureStrategy(),
@@ -29,14 +31,8 @@ def train_pipeline(cat_cols, num_cols, columns_drop):
         features=features
     )
 
-    model_pipe = train_model(
-        X_train=X_train,
-        y_train=y_train,
-        pipe_transform=pipe_transform,
-        model=model,
-    )
-
-    metrics = evaluator(model_pipe, X_test, y_test)
+    result = select_model(X_train_fe, y_train_fe)
+    metrics = evaluator(result, X_test, y_test)
 
     return metrics
 

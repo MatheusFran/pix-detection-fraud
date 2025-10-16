@@ -1,33 +1,54 @@
 from prefect import task
-
-from src.models.model import RegressionLogisticModel, RandomForestClassifierModel
-from src.models.model_selection import ModelSelection
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegressionCV
+from sklearn.model_selection import GridSearchCV
 
 
 @task
 def select_model(X, y):
-    models = [
-        RegressionLogisticModel(),
-        RandomForestClassifierModel()
-    ]
+    best_score = -1
+    best_model = None
+    best_name = None
+    best_params = None
 
-    param_grids = [
-        {  # LogisticRegression
-            'classifier__C': [0.1, 1, 10],
-            'classifier__penalty': ['l2'],
-            'classifier__solver': ['lbfgs']
+    models_params = [
+        {
+            'name': 'LogisticRegression',
+            'model': LogisticRegressionCV(max_iter=1000, class_weight='balanced'),
+            'param_grid': {
+                'C': [0.01, 0.1, 1, 10],
+                'penalty': ['l2'],
+                'solver': ['lbfgs', 'liblinear']
+            }
         },
-        {  # RandomForest
-            'classifier__n_estimators': [100, 200],
-            'classifier__max_depth': [None, 10, 20]
+        {
+            'name': 'RandomForest',
+            'model': RandomForestClassifier(class_weight='balanced'),
+            'param_grid': {
+                'n_estimators': [100, 200],
+                'max_depth': [5, 10, None],
+                'min_samples_split': [2, 5]
+            }
         }
     ]
 
-    selection = ModelSelection(
-        models=models,
-        param_grids=param_grids,
-        X=X,
-        y=y,
-    )
+    for mp in models_params:
+        grid = GridSearchCV(
+            estimator=mp['model'],
+            param_grid=mp['param_grid'],
+            cv=3,
+            scoring='f1'
+        )
+        grid.fit(X, y)
 
-    return selection
+        if grid.best_score_ > best_score:
+            best_score = grid.best_score_
+            best_model = grid.best_estimator_
+            best_name = mp['name']
+            best_params = grid.best_params_
+
+    return {
+        'best_model': best_model,
+        'best_name': best_name,
+        'best_params': best_params
+    }

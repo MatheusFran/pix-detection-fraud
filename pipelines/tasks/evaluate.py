@@ -1,11 +1,14 @@
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, classification_report
-import mlflow
 from prefect import task
 
 
 @task
-def evaluator(model_pipeline, X_test, y_test):
-    preds = model_pipeline.predict(X_test)
+def evaluator(model_result, X_test, y_test):
+    best_model = model_result["best_model"]
+    best_name = model_result["best_name"]
+    best_params = model_result["best_params"]
+
+    preds = best_model.predict(X_test)
 
     accuracy = accuracy_score(y_test, preds)
     precision = precision_score(y_test, preds)
@@ -14,22 +17,13 @@ def evaluator(model_pipeline, X_test, y_test):
     report = classification_report(y_test, preds, output_dict=True)
 
     metrics_dict = {
+        "model_name": best_name,
+        "best_params": best_params,
         "accuracy": accuracy,
         "precision": precision,
         "recall": recall,
         "f1": f1,
         "classification_report": report
     }
-
-    print(f"Accuracy: {accuracy:.4f}")
-    print(f"Precision: {precision:.4f}")
-    print(f"Recall: {recall:.4f}")
-    print(f"F1-score: {f1:.4f}")
-    print("\nClassification Report:\n", classification_report(y_test, preds))
-
-    mlflow.log_metric("accuracy_test", accuracy)
-    mlflow.log_metric("precision_test", precision)
-    mlflow.log_metric("recall_test", recall)
-    mlflow.log_metric("f1_test", f1)
 
     return metrics_dict
