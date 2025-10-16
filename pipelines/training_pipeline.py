@@ -1,42 +1,52 @@
-from zenml import Model, pipeline
-import mlflow
+from prefect import flow
 
-from src.models.model_selection import model_selection
-from src.steps.evaluate import evaluator
-from src.steps.feature_engineer import builder_features
-from src.steps.load_data import load_data
-from src.steps.preprocessing import preprocessing
-from src.steps.smote_data import smote_data
-from src.steps.split_data import split_data
-from src.steps.train_model import train_model
+from pipelines.tasks.evaluate import evaluator
+from pipelines.tasks.load_data import load_data
+from pipelines.tasks.preprocessing import preprocessing
+from pipelines.tasks.select_model import select_model
+from pipelines.tasks.split_data import split_data
+from src.features.new_features import TimeFeatureStrategy, AgeCategoryFeatureStrategy, HourCategoryFeatureStrategy
 
 
-@pipeline(
-    model=Model(name="fraud_detection_pix")
-)
-def ml_pipeline():
-    mlflow.set_experiment("fraud_detection_pix")
-    mlflow.set_tracking_uri("http://localhost:5000")
+@flow
+def train_pipeline(cat_cols, num_cols, columns_drop):
+    model = None
+
+    features = [
+        TimeFeatureStrategy(),
+        AgeCategoryFeatureStrategy(),
+        HourCategoryFeatureStrategy()
+    ]
 
     df = load_data()
-    df = builder_features(df)
     X_train, X_test, y_train, y_test = split_data(df, 'fraud')
-    X_train, y_train = smote_data(X_train, y_train)
-    X_train_processing = preprocessing(X_train)
-    grid_selection = model_selection(X_train_processing, y_train)
-
-    model_pipeline = train_model(
-        X_train_processing,
-        y_train,
-        preprocessing,
-        grid_selection
+    X_train_fe, y_train_fe = preprocessing(
+        X=X_train,
+        y=y_train,
+        cat_cols=cat_cols,
+        num_cols=num_cols,
+        columns_drop=columns_drop,
+        features=features
     )
 
-    metrics_dict = evaluator(model_pipeline, X_test, y_test)
+    model_pipe = train_model(
+        X_train=X_train,
+        y_train=y_train,
+        pipe_transform=pipe_transform,
+        model=model,
+    )
 
-    return metrics_dict
+    metrics = evaluator(model_pipe, X_test, y_test)
+
+    return metrics
 
 
-if __name__ == "__main__":
-    pipe = ml_pipeline()
-    pipe.run()
+if __name__ == '__main__':
+    train_pipeline(
+        cat_cols=['hour_category', 'age_category', 'account_type', 'gender', 'device_type'],
+        num_cols=['amount', 'age'],
+        columns_drop=[
+            'transaction_id', 'timestamp', 'sender_id', 'receiver_id',
+            'customer_id', 'cpf', 'pix_key', 'hour_date', 'minute_date'
+        ]
+    )

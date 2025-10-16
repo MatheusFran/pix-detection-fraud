@@ -1,10 +1,12 @@
 from abc import ABC, abstractmethod
 import pandas as pd
 
+
 class FeatureStrategy(ABC):
     @abstractmethod
     def apply(self, X):
         pass
+
 
 class DateFeatureStrategy(FeatureStrategy):
     def apply(self, X):
@@ -14,12 +16,14 @@ class DateFeatureStrategy(FeatureStrategy):
         X['year_date'] = date.dt.year
         return X
 
+
 class TimeFeatureStrategy(FeatureStrategy):
     def apply(self, X):
         time = pd.to_datetime(X['timestamp'])
         X['hour_date'] = time.dt.hour
         X['minute_date'] = time.dt.minute
         return X
+
 
 class AgeCategoryFeatureStrategy(FeatureStrategy):
     def apply(self, X):
@@ -28,6 +32,7 @@ class AgeCategoryFeatureStrategy(FeatureStrategy):
             age, bins=[0, 30, 50, 200], labels=['jovem', 'adulto', 'idoso']
         )
         return X
+
 
 class HourCategoryFeatureStrategy(FeatureStrategy):
     def apply(self, X):
@@ -38,6 +43,7 @@ class HourCategoryFeatureStrategy(FeatureStrategy):
                                     ordered=False)
 
         return X
+
 
 class NewFeature:
     def __init__(self, strategy: FeatureStrategy):

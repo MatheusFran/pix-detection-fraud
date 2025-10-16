@@ -1,10 +1,10 @@
-from zenml import step
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, classification_report
 import mlflow
+from prefect import task
 
-@step
+
+@task
 def evaluator(model_pipeline, X_test, y_test):
-
     preds = model_pipeline.predict(X_test)
 
     accuracy = accuracy_score(y_test, preds)

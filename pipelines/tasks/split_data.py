@@ -1,10 +1,10 @@
 from sklearn.model_selection import train_test_split
-from zenml import step
 from typing import Tuple
 import pandas as pd
+from prefect import task
 
 
-@step
+@task
 def split_data(df, target: str) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
     X = df.drop(columns=[target])
     y = df[target]
